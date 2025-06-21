@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalVideoPlayer - YouTube-like Interface</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #ff0000;
+            --primary-dark: #cc0000;
+            --dark-bg: #0f0f0f;
+            --dark-card: #212121;
+            --dark-card-hover: #3d3d3d;
+            --text: #ffffff;
+            --text-secondary: #aaaaaa;
+            --sidebar: #121212;
+            --search-bg: #121212;
+            --search-border: #303030;
+            --favorite: #ffc107;
+            --delete: #ff5252;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header style YouTube */
+        header {
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            height: 56px;
+            background-color: var(--dark-bg);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--search-border);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            margin-right: 40px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .logo-icon {
+            color: var(--primary);
+            margin-right: 10px;
+        }
+
+        .logo-text {
+            font-weight: bold;
+            letter-spacing: -1px;
+        }
+
+        /* Search bar style YouTube */
+        .search-container {
+            flex: 1;
+            display: flex;
+            max-width: 650px;
+            margin: 0 40px;
+        }
+
+        .search-box {
+            flex: 1;
+            display: flex;
+            background-color: var(--search-bg);
+            border: 1px solid var(--search-border);
+            border-radius: 40px 0 0 40px;
+            height: 40px;
+            padding: 0 16px;
+            align-items: center;
+        }
+
+        .search-box i {
+            color: var(--text-secondary);
+            margin-right: 8px;
+        }
+
+        #search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-btn {
+            background: var(--dark-card);
+            border: 1px solid var(--search-border);
+            border-left: none;
+            border-radius: 0 40px 40px 0;
+            width: 64px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .search-btn:hover {
+            background: var(--dark-card-hover);
+        }
+
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .upload-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Main layout */
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar style YouTube */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar);
+            padding: 12px 0;
+            overflow-y: auto;
+            height: calc(100vh - 56px);
+            position: sticky;
+            top: 56px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            height: 40px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .sidebar-item:hover {
+            background: var(--dark-card);
+        }
+
+        .sidebar-item i {
+            margin-right: 24px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: var(--search-border);
+            margin: 12px 0;
+        }
+
+        .sidebar-section-title {
+            padding: 8px 24px;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            background: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .video-grid-title {
+            margin: 16px 0 24px;
+            font-size: 22px;
+            font-weight: 500;
+            align-self: flex-start;
+        }
+
+        /* Video grid style YouTube */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            width: 100%;
+        }
+
+        .video-card {
+            background: var(--dark-card);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.3s, background 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            background: var(--dark-card-hover);
+        }
+
+        .thumbnail-container {
+            position: relative;
+            height: 0;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background: #000;
+        }
+
+        .thumbnail {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(45deg, #1a2a6c, #b21f1f, #fdbb2d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+        }
+
+        .video-duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .video-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 8px;
+            z-index: 2;
+        }
+
+        .action-btn {
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .favorite-btn:hover {
+            background: var(--favorite);
+        }
+
+        .delete-btn:hover {
+            background: var(--delete);
+        }
+
+        .video-info {
+            padding: 12px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .channel-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .video-details {
+            flex: 1;
+        }
+
+        .video-title {
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .channel-name {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .video-meta {
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            gap: 6px;
+        }
+
+        /* Player container */
+        .player-container {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 24px;
+            display: none;
+            width: 100%;
+        }
+
+        #video-player {
+            width: 100%;
+            height: auto;
+            max-height: 70vh;
+            display: block;
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .player-title {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .player-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .player-action-btn {
+            background: var(--dark-card);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: var(--text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .player-action-btn:hover {
+            background: var(--dark-card-hover);
+        }
+
+        .favorite-active {
+            color: var(--favorite);
+        }
+
+        /* No videos message */
+        .no-videos-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .no-videos-icon {
+            font-size: 80px;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .no-videos-title {
+            font-size: 28px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .no-videos-message {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        /* Refresh button */
+        .refresh-btn {
+            background: var(--dark-card);
+            color: var(--text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+            margin: 20px 0;
+        }
+
+        .refresh-btn:hover {
+            background: var(--dark-card-hover);
+        }
+
+        /* Delete confirmation */
+        .delete-confirm {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--dark-card);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .delete-confirm h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .delete-confirm p {
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .confirm-btn {
+            padding: 10px 25px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .confirm-delete {
+            background: var(--delete);
+            color: white;
+        }
+
+        .confirm-delete:hover {
+            background: #e04040;
+        }
+
+        .confirm-cancel {
+            background: var(--dark-card-hover);
+            color: var(--text);
+        }
+
+        .confirm-cancel:hover {
+            background: #2a2a2a;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 72px;
+            }
+            
+            .sidebar-item span {
+                display: none;
+            }
+            
+            .sidebar-item i {
+                margin-right: 0;
+            }
+            
+            .sidebar-section-title, .sidebar-divider {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                margin: 0 15px;
+            }
+            
+            .logo-container {
+                margin-right: 15px;
+            }
+            
+            .logo-text {
+                display: none;
+            }
+            
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100%, 1fr));
+            }
+        }
+
+        @media (max-width: 480px) {
+            .search-container {
+                display: none;
+            }
+            
+            .user-actions .upload-btn span {
+                display: none;
+            }
+            
+            .upload-btn {
+                padding: 8px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .video-card {
+            animation: fadeIn 0.4s ease-out;
+            animation-fill-mode: both;
+        }
+
+        .video-card:nth-child(1) { animation-delay: 0.1s; }
+        .video-card:nth-child(2) { animation-delay: 0.2s; }
+        .video-card:nth-child(3) { animation-delay: 0.3s; }
+        .video-card:nth-child(4) { animation-delay: 0.4s; }
+        .video-card:nth-child(5) { animation-delay: 0.5s; }
+        .video-card:nth-child(6) { animation-delay: 0.6s; }
+        .video-card:nth-child(7) { animation-delay: 0.7s; }
+        .video-card:nth-child(8) { animation-delay: 0.8s; }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--dark-card);
+            color: var(--text);
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header style YouTube -->
+    <header>
+        <div class="logo-container">
+            <div class="logo">
+                <i class="fas fa-play-circle logo-icon"></i>
+                <span class="logo-text">LocalPlayer</span>
+            </div>
+        </div>
+        
+        <div class="search-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-input" placeholder="Search videos...">
+            </div>
+            <div class="search-btn">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+        
+        <div class="user-actions">
+            <button class="upload-btn" id="upload-btn">
+                <i class="fas fa-plus"></i>
+                <span>Add Videos</span>
+            </button>
+            <input type="file" id="file-input" accept="video/*" multiple style="display: none;">
+            <button class="refresh-btn" id="refresh-btn">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh Library</span>
+            </button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Sidebar style YouTube -->
+        <div class="sidebar">
+            <div class="sidebar-item active" data-filter="all">
+                <i class="fas fa-film"></i>
+                <span>All Videos</span>
+            </div>
+            <div class="sidebar-item" data-filter="favorites">
+                <i class="fas fa-star"></i>
+                <span>Favorites</span>
+            </div>
+            <div class="sidebar-item" data-filter="recent">
+                <i class="fas fa-history"></i>
+                <span>Recently Added</span>
+            </div>
+            
+            <div class="sidebar-divider"></div>
+            
+            <div class="sidebar-section-title">Library</div>
+            <div class="sidebar-item">
+                <i class="fas fa-hdd"></i>
+                <span>Storage</span>
+            </div>
+            <div class="sidebar-item">
+                <i class="fas fa-info-circle"></i>
+                <span>About</span>
+            </div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="main-content">
+            <!-- Player container (hidden by default) -->
+            <div class="player-container" id="player-container">
+                <div class="player-header">
+                    <div class="player-title" id="player-title"></div>
+                    <div class="player-actions">
+                        <button class="player-action-btn" id="favorite-btn" title="Add to Favorites">
+                            <i class="far fa-star"></i>
+                        </button>
+                        <button class="player-action-btn" id="close-player" title="Close Player">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <video id="video-player" controls></video>
+            </div>
+            
+            <!-- Video grid title -->
+            <h2 class="video-grid-title" id="grid-title">Your Local Videos</h2>
+            
+            <!-- Video grid -->
+            <div class="video-grid" id="video-grid">
+                <!-- Video cards will be generated here -->
+            </div>
+            
+            <!-- No videos message -->
+            <div class="no-videos-container" id="no-videos" style="display: none;">
+                <i class="fas fa-film no-videos-icon"></i>
+                <h2 class="no-videos-title">No Videos Found</h2>
+                <p class="no-videos-message">Please add your videos to get started. Click the "Add Videos" button to upload your video files.</p>
+                <button class="upload-btn" id="add-first-video-btn">
+                    <i class="fas fa-plus"></i>
+                    <span>Add Your First Video</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="overlay" id="overlay"></div>
+    <div class="delete-confirm" id="delete-confirm">
+        <h3>Delete Video</h3>
+        <p>Are you sure you want to delete this video from your library? This action cannot be undone.</p>
+        <div class="confirm-buttons">
+            <button class="confirm-btn confirm-delete" id="confirm-delete">Delete</button>
+            <button class="confirm-btn confirm-cancel" id="confirm-cancel">Cancel</button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const fileInput = document.getElementById('file-input');
+            const uploadBtn = document.getElementById('upload-btn');
+            const videoGrid = document.getElementById('video-grid');
+            const videoPlayer = document.getElementById('video-player');
+            const playerContainer = document.getElementById('player-container');
+            const closePlayerBtn = document.getElementById('close-player');
+            const playerTitle = document.getElementById('player-title');
+            const favoriteBtn = document.getElementById('favorite-btn');
+            const searchInput = document.getElementById('search-input');
+            const gridTitle = document.getElementById('grid-title');
+            const noVideosContainer = document.getElementById('no-videos');
+            const addFirstVideoBtn = document.getElementById('add-first-video-btn');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const sidebarItems = document.querySelectorAll('.sidebar-item');
+            const deleteConfirm = document.getElementById('delete-confirm');
+            const confirmDeleteBtn = document.getElementById('confirm-delete');
+            const confirmCancelBtn = document.getElementById('confirm-cancel');
+            const overlay = document.getElementById('overlay');
+            
+            // Current state
+            let videos = [];
+            let currentVideo = null;
+            let currentFilter = 'all';
+            let videoToDelete = null;
+            
+            // Initialize
+            loadVideos();
+            updateVideoGrid();
+            
+            // Event listeners
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileUpload);
+            closePlayerBtn.addEventListener('click', closePlayer);
+            favoriteBtn.addEventListener('click', toggleFavorite);
+            searchInput.addEventListener('input', updateVideoGrid);
+            addFirstVideoBtn.addEventListener('click', () => fileInput.click());
+            refreshBtn.addEventListener('click', refreshLibrary);
+            confirmDeleteBtn.addEventListener('click', deleteVideo);
+            confirmCancelBtn.addEventListener('click', closeDeleteModal);
+            
+            // Sidebar filter event listeners
+            sidebarItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    sidebarItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    currentFilter = item.dataset.filter;
+                    updateVideoGrid();
+                });
+            });
+            
+            // Load videos from localStorage
+            function loadVideos() {
+                const savedVideos = localStorage.getItem('localPlayerVideos');
+                if (savedVideos) {
+                    videos = JSON.parse(savedVideos);
+                }
+            }
+            
+            // Save videos to localStorage
+            function saveVideos() {
+                localStorage.setItem('localPlayerVideos', JSON.stringify(videos));
+            }
+            
+            // Handle file upload
+            function handleFileUpload(e) {
+                const files = Array.from(e.target.files);
+                let addedCount = 0;
+                
+                files.forEach(file => {
+                    if (file.type.startsWith('video/')) {
+                        const fileName = file.name;
+                        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+                        const exists = videos.some(v => v.fileName === fileName);
+                        
+                        if (!exists) {
+                            // Generate random duration for demo
+                            const duration = `${Math.floor(Math.random() * 15) + 1}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`;
+                            
+                            videos.push({
+                                name: nameWithoutExt,
+                                fileName: fileName,
+                                type: file.type,
+                                size: file.size,
+                                duration: duration,
+                                addedDate: new Date().toISOString(),
+                                lastPlayed: null,
+                                isFavorite: false
+                            });
+                            addedCount++;
+                        }
+                    }
+                });
+                
+                if (addedCount > 0) {
+                    saveVideos();
+                    updateVideoGrid();
+                    showNotification(`${addedCount} video${addedCount > 1 ? 's' : ''} added successfully!`);
+                }
+                
+                fileInput.value = '';
+            }
+            
+            // Show notification
+            function showNotification(message) {
+                const notification = document.createElement('div');
+                notification.className = 'notification';
+                notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            }
+            
+            // Update video grid
+            function updateVideoGrid() {
+                const searchTerm = searchInput.value.toLowerCase();
+                let filteredVideos = [...videos];
+                
+                // Apply filter
+                if (currentFilter === 'favorites') {
+                    filteredVideos = filteredVideos.filter(video => video.isFavorite);
+                } else if (currentFilter === 'recent') {
+                    // Show videos added in the last 7 days
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    filteredVideos = filteredVideos.filter(video => 
+                        new Date(video.addedDate) > oneWeekAgo
+                    );
+                }
+                
+                // Apply search
+                if (searchTerm) {
+                    filteredVideos = filteredVideos.filter(video => 
+                        video.name.toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                videoGrid.innerHTML = '';
+                
+                if (filteredVideos.length === 0) {
+                    if (videos.length === 0) {
+                        // No videos at all
+                        noVideosContainer.style.display = 'flex';
+                        gridTitle.style.display = 'none';
+                    } else {
+                        // Videos exist but filter/search returned nothing
+                        noVideosContainer.style.display = 'none';
+                        gridTitle.style.display = 'block';
+                        
+                        if (searchTerm) {
+                            gridTitle.textContent = `No videos found for: "${searchTerm}"`;
+                        } else {
+                            if (currentFilter === 'favorites') {
+                                gridTitle.textContent = 'No favorite videos found';
+                            } else if (currentFilter === 'recent') {
+                                gridTitle.textContent = 'No recent videos found';
+                            } else {
+                                gridTitle.textContent = 'No videos found';
+                            }
+                        }
+                        
+                        videoGrid.innerHTML = `
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-secondary);">
+                                <i class="fas fa-search" style="font-size: 48px; margin-bottom: 20px;"></i>
+                                <h3>No videos match your criteria</h3>
+                                <p>Try different search terms or filters</p>
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+                
+                // Hide no videos message
+                noVideosContainer.style.display = 'none';
+                gridTitle.style.display = 'block';
+                
+                if (searchTerm) {
+                    gridTitle.textContent = `Search results for: "${searchTerm}" (${filteredVideos.length})`;
+                } else {
+                    if (currentFilter === 'favorites') {
+                        gridTitle.textContent = `Favorite Videos (${filteredVideos.length})`;
+                    } else if (currentFilter === 'recent') {
+                        gridTitle.textContent = `Recently Added Videos (${filteredVideos.length})`;
+                    } else {
+                        gridTitle.textContent = `All Videos (${filteredVideos.length})`;
+                    }
+                }
+                
+                filteredVideos.forEach((video, index) => {
+                    const videoCard = document.createElement('div');
+                    videoCard.className = 'video-card';
+                    
+                    // Format size
+                    const sizeInMB = (video.size / (1024 * 1024)).toFixed(1);
+                    
+                    // Create unique color for channel icon
+                    const channelColor = `hsl(${(index * 137) % 360}, 70%, 45%)`;
+                    
+                    videoCard.innerHTML = `
+                        <div class="thumbnail-container">
+                            <div class="thumbnail">
+                                <i class="fas fa-play"></i>
+                            </div>
+                            <div class="video-duration">${video.duration}</div>
+                            <div class="video-actions">
+                                <button class="action-btn favorite-btn" title="Favorite">
+                                    <i class="${video.isFavorite ? 'fas' : 'far'} fa-star"></i>
+                                </button>
+                                <button class="action-btn delete-btn" title="Delete">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="video-info">
+                            <div class="channel-icon" style="background: ${channelColor}">
+                                ${video.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="video-details">
+                                <div class="video-title">${video.name}</div>
+                                <div class="channel-name">Local Player</div>
+                                <div class="video-meta">
+                                    <span>${new Date(video.addedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    <span>•</span>
+                                    <span>${sizeInMB} MB</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    videoCard.addEventListener('click', (e) => {
+                        // Only play video if not clicking on action buttons
+                        if (!e.target.closest('.action-btn')) {
+                            playVideo(video);
+                            // Update last played time
+                            video.lastPlayed = new Date().toISOString();
+                            saveVideos();
+                        }
+                    });
+                    
+                    // Add favorite toggle
+                    const favoriteBtn = videoCard.querySelector('.favorite-btn');
+                    favoriteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        video.isFavorite = !video.isFavorite;
+                        saveVideos();
+                        updateVideoGrid();
+                    });
+                    
+                    // Add delete button handler
+                    const deleteBtn = videoCard.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDeleteModal(video);
+                    });
+                    
+                    videoGrid.appendChild(videoCard);
+                });
+            }
+            
+            // Show delete confirmation modal
+            function showDeleteModal(video) {
+                videoToDelete = video;
+                deleteConfirm.style.display = 'block';
+                overlay.style.display = 'block';
+            }
+            
+            // Close delete modal
+            function closeDeleteModal() {
+                deleteConfirm.style.display = 'none';
+                overlay.style.display = 'none';
+                videoToDelete = null;
+            }
+            
+            // Delete video
+            function deleteVideo() {
+                if (videoToDelete) {
+                    // Remove video from array
+                    videos = videos.filter(v => v.fileName !== videoToDelete.fileName);
+                    saveVideos();
+                    updateVideoGrid();
+                    showNotification(`"${videoToDelete.name}" has been deleted`);
+                    
+                    // If we're playing the deleted video, close player
+                    if (currentVideo && currentVideo.fileName === videoToDelete.fileName) {
+                        closePlayer();
+                    }
+                }
+                closeDeleteModal();
+            }
+            
+            // Play video
+            function playVideo(video) {
+                videoPlayer.src = video.fileName;
+                playerTitle.textContent = video.name;
+                playerContainer.style.display = 'block';
+                currentVideo = video;
+                
+                // Update favorite button
+                favoriteBtn.innerHTML = `<i class="${video.isFavorite ? 'fas' : 'far'} fa-star"></i>`;
+                favoriteBtn.classList.toggle('favorite-active', video.isFavorite);
+                
+                // Scroll to player
+                playerContainer.scrollIntoView({ behavior: 'smooth' });
+                
+                videoPlayer.load();
+                videoPlayer.play().catch(e => {
+                    console.log('Autoplay blocked', e);
+                });
+            }
+            
+            // Toggle favorite for current video
+            function toggleFavorite() {
+                if (currentVideo) {
+                    currentVideo.isFavorite = !currentVideo.isFavorite;
+                    saveVideos();
+                    
+                    // Update UI
+                    favoriteBtn.innerHTML = `<i class="${currentVideo.isFavorite ? 'fas' : 'far'} fa-star"></i>`;
+                    favoriteBtn.classList.toggle('favorite-active', currentVideo.isFavorite);
+                    
+                    // Update grid if needed
+                    if (currentFilter === 'favorites') {
+                        updateVideoGrid();
+                    }
+                }
+            }
+            
+            // Close player
+            function closePlayer() {
+                videoPlayer.pause();
+                playerContainer.style.display = 'none';
+                currentVideo = null;
+            }
+            
+            // Refresh library - check all files
+            function refreshLibrary() {
+                let removedCount = 0;
+                let checkPromises = [];
+                
+                showNotification('Checking video files...');
+                
+                // Check each video
+                videos.forEach(video => {
+                    checkPromises.push(
+                        checkFileExists(video.fileName)
+                            .then(exists => {
+                                if (!exists) {
+                                    removedCount++;
+                                    return video.fileName;
+                                }
+                                return null;
+                            })
+                    );
+                });
+                
+                // Process results
+                Promise.all(checkPromises)
+                    .then(results => {
+                        // Remove videos that don't exist
+                        const filesToRemove = results.filter(file => file !== null);
+                        videos = videos.filter(v => !filesToRemove.includes(v.fileName));
+                        saveVideos();
+                        updateVideoGrid();
+                        
+                        if (removedCount > 0) {
+                            showNotification(`Removed ${removedCount} missing video${removedCount > 1 ? 's' : ''}`);
+                        } else {
+                            showNotification('All video files are present');
+                        }
+                    });
+            }
+            
+            // Check if file exists
+            function checkFileExists(fileName) {
+                return new Promise((resolve) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('HEAD', fileName, true);
+                    xhr.onload = () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                    };
+                    xhr.onerror = () => resolve(false);
+                    xhr.send();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
